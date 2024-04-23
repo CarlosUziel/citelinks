@@ -91,6 +91,12 @@ mamba activate citelinks
 export PYTHONPATH="/home/{user}/citelinks/src":$PYTHONPATH
 ```
 
+5. Add path to your Firefox web driver (i.e. `geckodriver`) in `get_html_selenium` (**src/utils.py**):
+
+```python
+service = webdriver.FirefoxService(executable_path="path/to/geckodriver")
+```
+
 <!-- USAGE EXAMPLES -->
 
 ### Usage
