@@ -1,0 +1,23 @@
+name: citelinks
+channels:
+  - conda-forge
+dependencies:
+  - jupyterlab
+  - black
+  - isort
+  - scipy
+  - pandas
+  - seaborn
+  - typer
+  - fastapi
+  - streamlit
+  - firefox
+  - geckodriver
+  - ca-certificates
+  - certifi
+  - openssl
+  - selenium
+  - nltk
+  - autoflake
+  - black-jupyter
+prefix: /home/uziel/miniforge3/envs/citelinks
