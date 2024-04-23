@@ -85,13 +85,11 @@ mamba env create -f environment.yml # alternatively try environment_hist.yml
 mamba activate citelinks
 ```
 
-4. Set `PYTHONPATH` variable (preferably in your `.bashrc` file or equivalent):
+4. The URL to citation conversion is done using a function from a `utils` module. Make sure this module is in your Python path when running the application. Set `PYTHONPATH` variable (preferably in your `.bashrc` file or equivalent):
 
 ```bash
 export PYTHONPATH="/home/{user}/citelinks/src":$PYTHONPATH
 ```
-
-Now you are ready to start using the **GoiStrat** workflow!
 
 <!-- USAGE EXAMPLES -->
 
@@ -109,7 +107,7 @@ See example below:
 
 <br>
 
-> The URL to citation conversion is done using a function from a `utils` module. Make sure this module is in your Python path when running the application.
+**Note**: I use up to three different methods of obtaining the corresponding citation from a publication URL. However, I only tested this app with a few journals, so it is not guaranteed to work for all possible publication URLs. If it's not possible to obtain the citation from a certain URL, it will remain untouched in the final text.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
