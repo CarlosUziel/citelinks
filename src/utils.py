@@ -1,8 +1,10 @@
+import json
 import multiprocessing
 import re
 import urllib.parse
 from typing import Dict, List, Optional, Tuple
 
+import feedparser
 import requests
 import selenium
 from selenium import webdriver
@@ -150,32 +152,75 @@ def extract_doi_from_url(url: str) -> Optional[str]:
 
 
 def get_bibtex_citation(doi: str) -> Optional[str]:
-    """
-    Get BibTeX citation from DOI.
-
-    Args:
-        doi: DOI of the article.
-
-    Returns:
-        BibTeX citation of the article.
-    """
     url = f"https://api.crossref.org/works/{doi}"
     response = requests.get(url)
-    data = response.json()
 
-    # Extract relevant fields
+    if response.status_code != 200:
+        print(f"Request to {url} failed with status code: {response.status_code}")
+        return None
+
+    try:
+        data = response.json()
+    except json.JSONDecodeError:
+        print(f"Invalid JSON response for DOI: {doi}")
+        return None
+
     title = data["message"]["title"][0]
     year = data["message"]["created"]["date-parts"][0][0]
     author = data["message"]["author"][0]["family"]
     journal = data["message"]["container-title"][0]
 
-    # Generate citation key
     title_words = re.findall(r"\b\w+\b", title)
-    keyword = title_words[0].lower() if title_words else "article"
+    keyword = "".join(title_words[:2]).lower() if title_words else "article"
     citation_key = f"{author}{year}{keyword}"
 
-    # Construct BibTeX citation
-    bibtex_citation = f"@article{{{citation_key},\n title = {{{title}}},\n author = {{{author}}},\n year = {year},\n journal = {{{journal}}}\n}}"
+    bibtex_citation = (
+        f"@article{{{citation_key},"
+        f"\n title = {{{title}}},"
+        f"\n author = {{{author}}},"
+        f"\n year = {year},"
+        f"\n journal = {{{journal}}},"
+        f"\n doi = {{{doi}}}"  # Include the DOI in the citation
+        f"\n}}"
+    )
+
+    return bibtex_citation
+
+
+def get_bibtex_citation_arxiv(doi: str) -> Optional[str]:
+    doi_id = doi.split("/")[-1].replace("arXiv.", "")
+    url = f"http://export.arxiv.org/api/query?search_query=id:{doi_id}"
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        print(f"Request to {url} failed with status code: {response.status_code}")
+        return None
+
+    feed = feedparser.parse(response.content)
+
+    if not feed.entries:
+        print(f"No entries found for DOI: {doi}")
+        return None
+
+    entry = feed.entries[0]
+    title = entry.title
+    year = entry.published_parsed.tm_year
+    author = entry.author
+    journal = "arXiv"
+
+    title_words = re.findall(r"\b\w+\b", title)
+    keyword = "".join(title_words[:2]).lower() if title_words else "article"
+    citation_key = f"{author}{year}{keyword}"
+
+    bibtex_citation = (
+        f"@article{{{citation_key},"
+        f"\n title = {{{title}}},"
+        f"\n author = {{{author}}},"
+        f"\n year = {year},"
+        f"\n journal = {{{journal}}},"
+        f"\n doi = {{{doi}}}"  # Include the DOI in the citation
+        f"\n}}"
+    )
 
     return bibtex_citation
 
@@ -198,6 +243,7 @@ def process_paragraph(
         r"[$-_@.&+]|"  # special characters
         r"[!*\\(\\),]|"  # special characters
         r"(?:%[0-9a-fA-F][0-9a-fA-F]))+"  # percent encoding
+        r"(?<!\))"  # negative lookbehind for closing parenthesis
     )
 
     # Store original sentence
@@ -207,21 +253,31 @@ def process_paragraph(
     urls = re.findall(url_regex, paragraph)
 
     for url in urls:
-        # Extract DOI from URL
-        doi = extract_doi_from_url(url)
+        try:
+            # Extract DOI from URL
+            doi = extract_doi_from_url(url)
 
-        if doi:
-            # Generate BibTeX citation
-            bibtex_citation = get_bibtex_citation(doi)
+            if doi:
+                # Generate BibTeX citation
+                if "arxiv" in url:
+                    bibtex_citation = get_bibtex_citation_arxiv(doi)
+                else:
+                    bibtex_citation = get_bibtex_citation(doi)
 
-            # Extract citation key from BibTeX citation
-            citation_key = bibtex_citation.split(",")[0].split("{")[1]
+                if not bibtex_citation:
+                    continue
 
-            # Add BibTeX citation to list
-            bibtex_citations[citation_key] = bibtex_citation
+                # Extract citation key from BibTeX citation
+                citation_key = bibtex_citation.split(",")[0].split("{")[1]
 
-            # Replace URL with citation key
-            paragraph = paragraph.replace(url, citation_key + url[-2:])
+                # Add BibTeX citation to list
+                bibtex_citations[citation_key] = bibtex_citation
+
+                # Replace URL with citation key
+                paragraph = paragraph.replace(url, "\\cite{" + citation_key + "}")
+        except Exception as e:
+            print(f"Error processing URL: {url}")
+            print(e)
 
     # Replace original sentence with modified sentence in the shared list
     paragraphs[paragraphs.index(original_paragraph)] = paragraph
