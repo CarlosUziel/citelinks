@@ -172,7 +172,7 @@ def get_bibtex_citation(doi: str) -> Optional[str]:
 
     title_words = re.findall(r"\b\w+\b", title)
     keyword = "".join(title_words[:2]).lower() if title_words else "article"
-    citation_key = f"{author}{year}{keyword}"
+    citation_key = f"{author}{year}{keyword}".replace(" ", "")
 
     bibtex_citation = (
         f"@article{{{citation_key},"
@@ -210,7 +210,7 @@ def get_bibtex_citation_arxiv(doi: str) -> Optional[str]:
 
     title_words = re.findall(r"\b\w+\b", title)
     keyword = "".join(title_words[:2]).lower() if title_words else "article"
-    citation_key = f"{author}{year}{keyword}"
+    citation_key = f"{author}{year}{keyword}".replace(" ", "")
 
     bibtex_citation = (
         f"@article{{{citation_key},"
@@ -237,14 +237,7 @@ def process_paragraph(
         sentences: List of sentences to be modified.
     """
     # Regular expression to match URLs
-    url_regex = (
-        r"http[s]?://"  # http or https
-        r"(?:[a-zA-Z]|[0-9]|"  # alphanumeric characters
-        r"[$-_@.&+]|"  # special characters
-        r"[!*\\(\\),]|"  # special characters
-        r"(?:%[0-9a-fA-F][0-9a-fA-F]))+"  # percent encoding
-        r"(?<!\))"  # negative lookbehind for closing parenthesis
-    )
+    url_regex = r"http[s]?://[^)\s,]+"
 
     # Store original sentence
     original_paragraph = paragraph

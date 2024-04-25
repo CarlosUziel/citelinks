@@ -13,7 +13,7 @@ st.set_page_config(
 # Streamlit code
 st.title("URL to Citation Converter")
 
-user_input = st.text_area("Enter your text here")
+user_input = st.text_area("Enter your text here", height=200)
 
 if st.button("Process URLs"):
     # Create a placeholder for the processing message
@@ -28,11 +28,17 @@ if st.button("Process URLs"):
     # Update the processing message to indicate that the processing is done
     processing_message.text("Processing done!")
 
-    # Justify the output text
-    st.write(
-        "<div style='text-align: justify'>",
-        modified_text,
-        "</div>",
+    # Display modified_text in a non-editable scrollable text box
+    st.markdown("**Modified Text**", unsafe_allow_html=True)
+    st.markdown(
+        f'<textarea readonly style="width: 100%; height: 200px; padding: 10px;">{modified_text}</textarea>',
+        unsafe_allow_html=True,
+    )
+
+    # Display bibtex_citations in a non-editable scrollable text box
+    st.markdown("**Bibtex Citations**", unsafe_allow_html=True)
+    st.markdown(
+        f'<textarea readonly style="width: 100%; height: 200px; padding: 10px;">{"\n".join(bibtex_citations.values())}</textarea>',
         unsafe_allow_html=True,
     )
 
