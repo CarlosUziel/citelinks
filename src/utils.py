@@ -167,20 +167,36 @@ def get_bibtex_citation(doi: str) -> Optional[str]:
 
     title = data["message"]["title"][0]
     year = data["message"]["created"]["date-parts"][0][0]
-    author = data["message"]["author"][0]["family"]
+    authors = []
+    for author in data["message"]["author"]:
+        if "given" in author and "family" in author:
+            authors.append(f"{author['family']}, {author['given']}")
+        elif "name" in author:
+            authors.append(author["name"])
+    authors_str = " and ".join(authors)
     journal = data["message"]["container-title"][0]
+    volume = data["message"].get("volume", "")
+    pages = data["message"].get("page", "")
+    publisher = data["message"].get("publisher", "")
 
     title_words = re.findall(r"\b\w+\b", title)
-    keyword = "".join(title_words[:2]).lower() if title_words else "article"
-    citation_key = f"{author}{year}{keyword}".replace(" ", "")
+    keyword = "".join(title_words[:2]) if title_words else "article"
+    citation_key = (
+        f"{authors[0].split(",")[0]}{year}{keyword}".lower()
+        .replace(" ", "")
+        .replace(".", "")
+    )
 
     bibtex_citation = (
         f"@article{{{citation_key},"
         f"\n title = {{{title}}},"
-        f"\n author = {{{author}}},"
+        f"\n author = {{{authors_str}}},"
         f"\n year = {year},"
         f"\n journal = {{{journal}}},"
-        f"\n doi = {{{doi}}}"  # Include the DOI in the citation
+        f"\n volume = {{{volume}}},"
+        f"\n pages = {{{pages}}},"
+        f"\n publisher = {{{publisher}}},"
+        f"\n doi = {{{doi}}}"
         f"\n}}"
     )
 
@@ -205,20 +221,36 @@ def get_bibtex_citation_arxiv(doi: str) -> Optional[str]:
     entry = feed.entries[0]
     title = entry.title
     year = entry.published_parsed.tm_year
-    author = entry.author
+    authors = authors = [
+        f"{author['name'].split(" ")[-1]}, {' '.join(author['name'].split(" ")[:-1])}"
+        if len(author["name"].split(" ")) > 1
+        else author["name"]
+        for author in entry.authors
+    ]
+    authors_str = " and ".join(authors)
     journal = "arXiv"
+    volume = entry.get("arxiv_journal_ref")
+    pages = entry.get("arxiv_comment")
+    publisher = "arXiv"
 
     title_words = re.findall(r"\b\w+\b", title)
-    keyword = "".join(title_words[:2]).lower() if title_words else "article"
-    citation_key = f"{author}{year}{keyword}".replace(" ", "")
+    keyword = "".join(title_words[:2]) if title_words else "article"
+    citation_key = (
+        f"{authors[0].split(", ")[0]}{year}{keyword}".lower()
+        .replace(" ", "")
+        .replace(".", "")
+    )
 
     bibtex_citation = (
         f"@article{{{citation_key},"
         f"\n title = {{{title}}},"
-        f"\n author = {{{author}}},"
+        f"\n author = {{{authors_str}}},"
         f"\n year = {year},"
         f"\n journal = {{{journal}}},"
-        f"\n doi = {{{doi}}}"  # Include the DOI in the citation
+        f"\n volume = {{{volume}}},"
+        f"\n pages = {{{pages}}},"
+        f"\n publisher = {{{publisher}}},"
+        f"\n doi = {{{doi}}}"
         f"\n}}"
     )
 
@@ -250,7 +282,7 @@ def process_paragraph(
             # Extract DOI from URL
             doi = extract_doi_from_url(url)
 
-            if doi:
+            if doi and "doi" in doi:
                 # Generate BibTeX citation
                 if "arxiv" in url:
                     bibtex_citation = get_bibtex_citation_arxiv(doi)
@@ -268,6 +300,8 @@ def process_paragraph(
 
                 # Replace URL with citation key
                 paragraph = paragraph.replace(url, "\\cite{" + citation_key + "}")
+            else:
+                print(f"DOI not found for URL: {url}")
         except Exception as e:
             print(f"Error processing URL: {url}")
             print(e)
